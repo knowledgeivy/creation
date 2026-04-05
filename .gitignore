@@ -1,0 +1,14 @@
+# Environment variables - never commit real keys
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Logs
+*.log
