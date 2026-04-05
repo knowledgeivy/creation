@@ -1,508 +1,586 @@
-// State Management
+// AI-Powered Writing Platform - Enhanced Version with Granular Selection + AI Team Dashboard
+
+// ── State ────────────────────────────────────────────────────────────────────
 const state = {
-    currentDoc: {
-        title: 'Untitled Document',
-        content: '',
-        sections: ['intro', 'body', 'conclusion']
-    },
     currentView: 'edit',
-    currentAgent: 'orchestrator',
-    currentLevel: 'paragraph',
-    collaborators: [{ id: 1, name: 'You', avatar: 'JD', online: true }],
-    chatHistory: [],
-    suggestions: []
+    selectionMode: 'sentence',
+    selectedText: '',
+    selectedRange: null,
+    aiMenuVisible: false,
+    activeAgent: 'orchestrator',
+
+    // Dashboard state
+    dashboardVisible: true,
+    automationLevel: 'manual',     // manual | assisted | automatic
+    interactionMode: 'collaborative', // silent | collaborative | educational | expert
+
+    // Metrics
+    metrics: {
+        requests: 0,
+        responseTimes: [],
+        accepted: 0
+    },
+
+    documentStats: { words: 0, characters: 0, paragraphs: 0, readingTime: 0 }
 };
 
-// Initialize App
+// ── Agent definitions ─────────────────────────────────────────────────────────
+const aiAgents = {
+    orchestrator: { name: 'Orchestrator',   icon: '🎯', description: 'Coordinates all agents and routes requests' },
+    research:     { name: 'Research Agent', icon: '🔍', description: 'Finds sources, verifies facts, manages citations' },
+    editorial:    { name: 'Editorial Agent',icon: '✏️', description: 'Improves structure, flow, and organization' },
+    creative:     { name: 'Creative Agent', icon: '🎨', description: 'Enhances imagery, metaphors, emotional impact' },
+    academic:     { name: 'Academic Agent', icon: '🎓', description: 'Ensures scholarly rigor and proper citations' },
+    technical:    { name: 'Technical Agent',icon: '⚙️', description: 'Handles technical accuracy and clarity' },
+    narrative:    { name: 'Narrative Agent',icon: '📖', description: 'Develops story structure and flow' },
+    factChecker:  { name: 'Fact-Checker',   icon: '✓',  description: 'Verifies facts and detects bias' },
+    accessibility:{ name: 'Accessibility',  icon: '♿', description: 'Ensures inclusive and accessible writing' },
+    proofreader:  { name: 'Proofreader',    icon: '🔎', description: 'Catches grammar and spelling errors' },
+    business:     { name: 'Business Agent', icon: '💼', description: 'Optimizes for business communication' }
+};
+
+// Agent status per roster entry: idle | queued | working | done
+const agentStatuses = Object.fromEntries(Object.keys(aiAgents).map(k => [k, 'idle']));
+
+// ── AI actions per granularity ────────────────────────────────────────────────
+const aiActions = {
+    word: [
+        { id: 'synonym',   icon: '🔄', label: 'Find Synonyms', desc: 'Suggest alternative words',      agent: 'editorial',    support: [] },
+        { id: 'define',    icon: '📖', label: 'Define Word',   desc: 'Show definition and usage',      agent: 'research',     support: [] },
+        { id: 'translate', icon: '🌐', label: 'Translate',     desc: 'Translate to other languages',   agent: 'research',     support: [] }
+    ],
+    sentence: [
+        { id: 'rephrase',  icon: '✏️', label: 'Rephrase',      desc: 'Rewrite for clarity',            agent: 'editorial',    support: ['proofreader'] },
+        { id: 'simplify',  icon: '📝', label: 'Simplify',      desc: 'Make easier to understand',      agent: 'editorial',    support: ['accessibility'] },
+        { id: 'expand',    icon: '➕', label: 'Expand',        desc: 'Add more detail',                agent: 'creative',     support: ['editorial'] },
+        { id: 'grammar',   icon: '✓',  label: 'Check Grammar', desc: 'Fix grammar issues',             agent: 'proofreader',  support: [] }
+    ],
+    paragraph: [
+        { id: 'improve',     icon: '⬆️', label: 'Improve Flow',  desc: 'Enhance coherence and transitions', agent: 'editorial',   support: ['narrative'] },
+        { id: 'restructure', icon: '🔄', label: 'Restructure',   desc: 'Reorganize for better impact',      agent: 'narrative',   support: ['editorial'] },
+        { id: 'tone',        icon: '🎭', label: 'Adjust Tone',   desc: 'Change formality or style',         agent: 'creative',    support: ['editorial'] },
+        { id: 'fact-check',  icon: '✓',  label: 'Fact Check',   desc: 'Verify claims and data',            agent: 'factChecker', support: ['research'] }
+    ],
+    section: [
+        { id: 'summarize', icon: '📋', label: 'Summarize',          desc: 'Create concise summary',       agent: 'editorial',     support: ['orchestrator'] },
+        { id: 'outline',   icon: '📑', label: 'Generate Outline',   desc: 'Extract key points',           agent: 'orchestrator',  support: ['editorial', 'narrative'] },
+        { id: 'enhance',   icon: '✨', label: 'Enhance Section',    desc: 'Improve overall quality',      agent: 'orchestrator',  support: ['creative', 'editorial'] },
+        { id: 'citations', icon: '📚', label: 'Add Citations',      desc: 'Suggest relevant sources',     agent: 'academic',      support: ['research', 'factChecker'] }
+    ],
+    document: [
+        { id: 'analyze',       icon: '📊', label: 'Analyze Document',   desc: 'Comprehensive analysis',        agent: 'orchestrator',  support: ['editorial', 'accessibility', 'proofreader'] },
+        { id: 'consistency',   icon: '🔍', label: 'Check Consistency',  desc: 'Ensure uniform style',          agent: 'editorial',     support: ['proofreader'] },
+        { id: 'accessibility', icon: '♿', label: 'Accessibility Check', desc: 'Improve accessibility',        agent: 'accessibility', support: ['editorial'] },
+        { id: 'export',        icon: '📤', label: 'Export Options',      desc: 'Export in various formats',    agent: 'orchestrator',  support: [] }
+    ]
+};
+
+// Educational explanations shown in log when interactionMode === 'educational'
+const educationalNotes = {
+    synonym:      'Vocabulary enhancement improves reader engagement and avoids repetition.',
+    define:       'Clear terminology reduces ambiguity, especially for diverse audiences.',
+    rephrase:     'Clarity rewrites preserve meaning while improving readability scores.',
+    simplify:     'Plain language principles make content accessible to a wider audience.',
+    expand:       'Adding supporting detail strengthens arguments and reader confidence.',
+    grammar:      'Grammatical correctness builds credibility and trust with readers.',
+    improve:      'Strong transitions are the "glue" that holds paragraphs together.',
+    restructure:  'Logical flow helps readers follow complex ideas without getting lost.',
+    tone:         'Tone consistency signals professionalism and keeps readers engaged.',
+    'fact-check': 'Verified claims are the foundation of authoritative writing.',
+    summarize:    'Concise summaries reinforce key ideas and aid retention.',
+    outline:      'A clear structure helps both writer and reader navigate the argument.',
+    enhance:      'Holistic enhancement balances clarity, style, and completeness.',
+    citations:    'Proper citations lend credibility and allow readers to verify claims.',
+    analyze:      'Document-level analysis catches issues invisible at sentence level.',
+    consistency:  'Consistent style prevents reader distraction and signals polish.',
+    accessibility:'Accessible writing includes everyone — WCAG 2.1 AA is the standard.',
+    export:       'Multi-format export ensures your content reaches every platform.'
+};
+
+// ── Initialization ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
+    initializeEditor();
+    initializeEventListeners();
+    initializeDashboard();
+    updateStats();
 });
 
-function initializeApp() {
-    setupEventListeners();
-    updateStats();
-    simulateAIPresence();
+function initializeEditor() {
+    const editor = document.getElementById('editor');
+    if (!editor.textContent.trim()) {
+        editor.innerHTML = `
+            <h1>Welcome to AI-Powered Writing Platform</h1>
+            <p>This is an enhanced demo showcasing granular text selection and AI assistance. Try selecting text at different levels:</p>
+            <ul>
+                <li><strong>Word:</strong> Double-click any word</li>
+                <li><strong>Sentence:</strong> Click once to select a sentence</li>
+                <li><strong>Paragraph:</strong> Select an entire paragraph</li>
+                <li><strong>Section:</strong> Select multiple paragraphs</li>
+                <li><strong>Document:</strong> Select all content</li>
+            </ul>
+            <h2>AI Assistance Features</h2>
+            <p>After selecting text, right-click or use the AI menu to access context-aware suggestions. The AI will provide different options based on your selection granularity.</p>
+            <p>For example, selecting a single word offers synonyms and definitions, while selecting a paragraph provides options to improve flow, restructure, or adjust tone.</p>
+            <h2>Multi-Agent System</h2>
+            <p>Our platform uses 11 specialized AI agents working together to provide comprehensive writing assistance. Each agent has specific expertise, from research and fact-checking to creative enhancement and accessibility improvements.</p>
+        `;
+    }
 }
 
-function setupEventListeners() {
-    // Editor
+function initializeEventListeners() {
+    // View toggle
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchView(btn.dataset.view));
+    });
+
+    // Granularity selector
+    document.getElementById('granularitySelect').addEventListener('change', (e) => {
+        state.selectionMode = e.target.value;
+        updateSelectionModeInfo();
+        document.getElementById('statusMode').textContent =
+            e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1) + ' Mode';
+    });
+
+    // Editor events
     const editor = document.getElementById('editor');
     editor.addEventListener('input', handleEditorInput);
-    editor.addEventListener('keydown', handleEditorKeydown);
+    editor.addEventListener('mouseup', handleTextSelection);
+    editor.addEventListener('contextmenu', handleContextMenu);
+    editor.addEventListener('dblclick', handleDoubleClick);
 
-    // View Toggle
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const view = e.target.dataset.view;
-            switchView(view);
-        });
-    });
-
-    // Formatting Buttons
-    document.querySelectorAll('.tool-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const format = e.target.closest('.tool-btn').dataset.format;
-            applyFormatting(format);
-        });
-    });
-
-    // AI Agent Selector
-    document.getElementById('agentSelect').addEventListener('change', (e) => {
-        state.currentAgent = e.target.value;
-        updateAIAgentInfo();
-    });
-
-    // AI Level Buttons
-    document.querySelectorAll('.level-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            state.currentLevel = e.currentTarget.dataset.level;
-            showLevelNotification();
-        });
-    });
-
-    // Quick Actions
-    document.querySelectorAll('.action-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const action = e.currentTarget.dataset.action;
-            handleQuickAction(action);
-        });
-    });
-
-    // Chat
-    document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
-    document.getElementById('chatInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendChatMessage();
+    // Close AI menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ai-menu') && !e.target.closest('.editor-area')) {
+            hideAIMenu();
         }
     });
 
-    // Suggestion Buttons
-    document.querySelectorAll('.suggestion-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const suggestion = e.target.textContent;
-            handleSuggestionClick(suggestion);
-        });
+    // Dashboard toggle in nav
+    document.getElementById('aiDashboardToggle').addEventListener('click', toggleDashboard);
+    document.getElementById('closeDashboard').addEventListener('click', () => {
+        state.dashboardVisible = false;
+        document.getElementById('aiDashboard').classList.add('hidden');
     });
 
-    // Export Modal
-    document.getElementById('exportBtn').addEventListener('click', () => {
-        document.getElementById('exportModal').classList.add('active');
-    });
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+}
 
-    document.querySelectorAll('.modal-close').forEach(btn => {
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function initializeDashboard() {
+    renderAgentRoster();
+    bindAutomationToggle();
+    bindInteractionToggle();
+}
+
+function toggleDashboard() {
+    state.dashboardVisible = !state.dashboardVisible;
+    document.getElementById('aiDashboard').classList.toggle('hidden', !state.dashboardVisible);
+}
+
+function bindAutomationToggle() {
+    document.querySelectorAll('#automationToggle .mode-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-        });
-    });
-
-    document.querySelectorAll('.export-option').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const format = e.currentTarget.querySelector('.export-name').textContent;
-            handleExport(format);
-        });
-    });
-
-    // Outline Navigation
-    document.querySelectorAll('.outline-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            document.querySelectorAll('.outline-item').forEach(i => i.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            const section = e.currentTarget.dataset.section;
-            scrollToSection(section);
-        });
-    });
-
-    // Undo/Redo
-    document.getElementById('undoBtn').addEventListener('click', () => {
-        document.execCommand('undo');
-    });
-
-    document.getElementById('redoBtn').addEventListener('click', () => {
-        document.execCommand('redo');
-    });
-}
-
-// Editor Functions
-function handleEditorInput(e) {
-    state.currentDoc.content = e.target.value;
-    updateStats();
-    updatePreview();
-    simulateAutoSave();
-
-    // Simulate real-time AI suggestions for sentence level
-    if (state.currentLevel === 'sentence') {
-        debounce(showRealtimeSuggestions, 500)();
-    }
-}
-
-function handleEditorKeydown(e) {
-    // Tab key for indentation
-    if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = e.target.selectionStart;
-        const end = e.target.selectionEnd;
-        e.target.value = e.target.value.substring(0, start) + '    ' + e.target.value.substring(end);
-        e.target.selectionStart = e.target.selectionEnd = start + 4;
-    }
-}
-
-function switchView(view) {
-    state.currentView = view;
-
-    // Update button states
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.view === view) {
+            document.querySelectorAll('#automationToggle .mode-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            state.automationLevel = btn.dataset.level;
+            const hints = {
+                manual:    'You trigger all AI actions.',
+                assisted:  'AI proactively offers suggestions.',
+                automatic: 'AI processes changes automatically.'
+            };
+            document.getElementById('automationHint').textContent = hints[state.automationLevel];
+        });
+    });
+}
+
+function bindInteractionToggle() {
+    document.querySelectorAll('#interactionToggle .mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#interactionToggle .mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.interactionMode = btn.dataset.mode;
+            const hints = {
+                silent:        'Results only — no agent activity shown.',
+                collaborative: 'All agents visible, full activity shown.',
+                educational:   'Agents explain their reasoning as they work.',
+                expert:        'Minimal intervention, brief log.'
+            };
+            document.getElementById('interactionHint').textContent = hints[state.interactionMode];
+        });
+    });
+}
+
+function renderAgentRoster() {
+    const roster = document.getElementById('agentRoster');
+    roster.innerHTML = Object.entries(aiAgents).map(([key, agent]) => `
+        <div class="roster-agent" id="roster-${key}" data-agent="${key}">
+            <span class="agent-status-dot idle" id="dot-${key}"></span>
+            <span class="roster-agent-icon">${agent.icon}</span>
+            <div class="roster-agent-info">
+                <div class="roster-agent-name">${agent.name}</div>
+                <div class="roster-agent-status" id="status-${key}">Idle</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function setAgentStatus(agentKey, status, message) {
+    const row = document.getElementById(`roster-${agentKey}`);
+    const dot = document.getElementById(`dot-${agentKey}`);
+    const statusEl = document.getElementById(`status-${agentKey}`);
+    if (!row) return;
+
+    row.className = `roster-agent ${status !== 'idle' ? status : ''}`;
+    dot.className = `agent-status-dot ${status}`;
+    statusEl.textContent = message || status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function addLogEntry(agentKey, message, isEducational = false) {
+    if (state.interactionMode === 'silent') return;
+
+    const log = document.getElementById('activityLog');
+    const empty = log.querySelector('.log-empty');
+    if (empty) empty.remove();
+
+    const now = new Date();
+    const time = now.toTimeString().slice(0, 5);
+    const agent = aiAgents[agentKey];
+
+    const entry = document.createElement('div');
+    entry.className = `log-entry${isEducational ? ' educational' : ''}`;
+    entry.innerHTML = `
+        <span class="log-time">${time}</span>
+        <div class="log-body">
+            <span class="log-agent">${agent.icon} ${agent.name}</span>
+            <div class="log-message">${message}</div>
+        </div>
+    `;
+    log.insertBefore(entry, log.firstChild);
+
+    // Keep log to 10 entries
+    while (log.children.length > 10) log.removeChild(log.lastChild);
+}
+
+function updateMetrics(responseTimeMs) {
+    state.metrics.requests++;
+    state.metrics.responseTimes.push(responseTimeMs);
+    document.getElementById('metricRequests').textContent = state.metrics.requests;
+
+    const avg = state.metrics.responseTimes.reduce((a, b) => a + b, 0) / state.metrics.responseTimes.length;
+    document.getElementById('metricResponseTime').textContent = (avg / 1000).toFixed(1) + 's';
+}
+
+function recordAccepted() {
+    state.metrics.accepted++;
+    const pct = Math.round((state.metrics.accepted / state.metrics.requests) * 100);
+    document.getElementById('metricAccepted').textContent = `${state.metrics.accepted} (${pct}%)`;
+}
+
+// Animate agents working for a given action
+function animateAgents(actionId, primaryAgentKey, supportingAgentKeys) {
+    const startTime = Date.now();
+    const showFull = state.interactionMode !== 'silent' && state.interactionMode !== 'expert';
+
+    // Step 1: Orchestrator routes the request
+    setAgentStatus('orchestrator', 'working', 'Routing request…');
+    addLogEntry('orchestrator', `Analysing request: <em>${actionId}</em>`);
+
+    // Step 2: Primary agent starts working
+    setTimeout(() => {
+        setAgentStatus('orchestrator', 'done', 'Routed');
+        setAgentStatus(primaryAgentKey, 'working', 'Processing…');
+        addLogEntry(primaryAgentKey, 'Processing your selection…');
+
+        if (state.interactionMode === 'educational') {
+            const note = educationalNotes[actionId];
+            if (note) setTimeout(() => addLogEntry(primaryAgentKey, note, true), 300);
         }
+
+        // Step 3: Supporting agents (only in collaborative / educational)
+        if (showFull && supportingAgentKeys.length) {
+            supportingAgentKeys.forEach((key, i) => {
+                setTimeout(() => {
+                    setAgentStatus(key, 'queued', 'Queued');
+                    setTimeout(() => {
+                        setAgentStatus(key, 'working', 'Supporting…');
+                        addLogEntry(key, 'Providing supporting analysis…');
+                    }, 300);
+                }, i * 200);
+            });
+        }
+
+        // Step 4: All done
+        const finishDelay = showFull && supportingAgentKeys.length
+            ? 1200 + supportingAgentKeys.length * 200
+            : 800;
+
+        setTimeout(() => {
+            setAgentStatus(primaryAgentKey, 'done', 'Done');
+            supportingAgentKeys.forEach(k => setAgentStatus(k, 'done', 'Done'));
+
+            const elapsed = Date.now() - startTime;
+            updateMetrics(elapsed);
+            addLogEntry(primaryAgentKey, 'Suggestion ready.');
+
+            // Reset all to idle after a beat
+            setTimeout(() => {
+                ['orchestrator', primaryAgentKey, ...supportingAgentKeys].forEach(k => {
+                    setAgentStatus(k, 'idle', 'Idle');
+                });
+            }, 1500);
+        }, finishDelay);
+    }, 500);
+}
+
+// ── Editor event handlers ─────────────────────────────────────────────────────
+function handleEditorInput() {
+    updateStats();
+    updateSaveStatus();
+}
+
+function handleTextSelection(e) {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+
+    if (selectedText.length > 0) {
+        state.selectedText = selectedText;
+        state.selectedRange = selection.getRangeAt(0);
+        updateSelectionInfo();
+
+        setTimeout(() => {
+            if (state.selectedText === selectedText) showAIMenu(e.clientX, e.clientY);
+        }, 300);
+    } else {
+        hideAIMenu();
+        updateSelectionInfo();
+    }
+}
+
+function handleContextMenu(e) {
+    const selection = window.getSelection();
+    if (selection.toString().trim().length > 0) {
+        e.preventDefault();
+        showAIMenu(e.clientX, e.clientY);
+    }
+}
+
+function handleDoubleClick(e) {
+    if (state.selectionMode === 'word') {
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+        if (selectedText) {
+            state.selectedText = selectedText;
+            state.selectedRange = selection.getRangeAt(0);
+            showAIMenu(e.clientX, e.clientY);
+        }
+    }
+}
+
+// ── AI Menu ───────────────────────────────────────────────────────────────────
+function showAIMenu(x, y) {
+    hideAIMenu();
+
+    const menu = document.createElement('div');
+    menu.className = 'ai-menu';
+    menu.id = 'ai-menu';
+    menu.style.left = `${x}px`;
+    menu.style.top  = `${y + 10}px`;
+
+    const actions = aiActions[state.selectionMode] || [];
+    const agent   = aiAgents[state.activeAgent];
+
+    menu.innerHTML = `
+        <div class="ai-menu-header">
+            <div class="ai-menu-title">AI Assistance</div>
+            <div class="ai-menu-agent">${agent.icon} ${agent.name}</div>
+        </div>
+        <div class="ai-menu-content">
+            ${actions.map(action => `
+                <button class="ai-menu-item"
+                        data-action="${action.id}"
+                        data-agent="${action.agent}"
+                        data-support="${action.support.join(',')}">
+                    <div class="ai-menu-icon">${action.icon}</div>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">${action.label}</div>
+                        <div class="ai-menu-desc">${action.desc}</div>
+                    </div>
+                </button>
+            `).join('')}
+            <div class="ai-menu-divider"></div>
+            <button class="ai-menu-item" data-action="custom" data-agent="orchestrator" data-support="">
+                <div class="ai-menu-icon">💬</div>
+                <div class="ai-menu-text">
+                    <div class="ai-menu-label">Custom Request</div>
+                    <div class="ai-menu-desc">Ask AI anything about this text</div>
+                </div>
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    // Keep within viewport
+    const rect = menu.getBoundingClientRect();
+    if (rect.right  > window.innerWidth)  menu.style.left = `${window.innerWidth  - rect.width  - 20}px`;
+    if (rect.bottom > window.innerHeight) menu.style.top  = `${y - rect.height - 10}px`;
+
+    menu.querySelectorAll('.ai-menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const support = item.dataset.support ? item.dataset.support.split(',').filter(Boolean) : [];
+            handleAIAction(item.dataset.action, item.dataset.agent, support);
+        });
     });
 
-    // Update view visibility
-    if (view === 'edit') {
-        document.getElementById('editView').classList.add('active');
-        document.getElementById('previewView').classList.remove('active');
-    } else if (view === 'preview') {
-        document.getElementById('editView').classList.remove('active');
-        document.getElementById('previewView').classList.add('active');
-        updatePreview();
-    } else if (view === 'split') {
-        // TODO: Implement split view
-        alert('Split view coming soon!');
-    }
+    state.aiMenuVisible = true;
 }
 
-function updatePreview() {
-    const content = document.getElementById('editor').value;
-    const html = marked.parse(content);
-    document.getElementById('previewContent').innerHTML = html;
+function hideAIMenu() {
+    const menu = document.getElementById('ai-menu');
+    if (menu) { menu.remove(); state.aiMenuVisible = false; }
 }
 
-function applyFormatting(format) {
-    const editor = document.getElementById('editor');
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    const selectedText = editor.value.substring(start, end);
+function handleAIAction(action, agentKey, supportingKeys = []) {
+    hideAIMenu();
 
-    let formattedText = '';
+    const agentInfo = aiAgents[agentKey] || aiAgents.orchestrator;
+    showNotification(`${agentInfo.icon} ${agentInfo.name} is working…`);
 
-    switch (format) {
-        case 'bold':
-            formattedText = `**${selectedText}**`;
-            break;
-        case 'italic':
-            formattedText = `*${selectedText}*`;
-            break;
-        case 'underline':
-            formattedText = `<u>${selectedText}</u>`;
-            break;
-        case 'h1':
-            formattedText = `# ${selectedText}`;
-            break;
-        case 'h2':
-            formattedText = `## ${selectedText}`;
-            break;
-        case 'h3':
-            formattedText = `### ${selectedText}`;
-            break;
-        case 'ul':
-            formattedText = `- ${selectedText}`;
-            break;
-        case 'ol':
-            formattedText = `1. ${selectedText}`;
-            break;
-        case 'link':
-            const url = prompt('Enter URL:');
-            formattedText = `[${selectedText}](${url || '#'})`;
-            break;
-        case 'image':
-            const imgUrl = prompt('Enter image URL:');
-            formattedText = `![${selectedText || 'Image'}](${imgUrl || ''})`;
-            break;
-        default:
-            formattedText = selectedText;
-    }
-
-    editor.value = editor.value.substring(0, start) + formattedText + editor.value.substring(end);
-    editor.focus();
-    editor.selectionStart = editor.selectionEnd = start + formattedText.length;
-
-    handleEditorInput({ target: editor });
-}
-
-// Statistics
-function updateStats() {
-    const content = document.getElementById('editor').value;
-    const words = content.trim().split(/\s+/).filter(w => w.length > 0).length;
-    const chars = content.length;
-    const readTime = Math.ceil(words / 200); // Average reading speed
-
-    document.getElementById('wordCount').textContent = words;
-    document.getElementById('charCount').textContent = chars;
-    document.getElementById('readTime').textContent = `${readTime} min`;
-}
-
-// AI Functions
-function handleQuickAction(action) {
-    const editor = document.getElementById('editor');
-    const selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd);
-
-    // Show loading state
-    addChatMessage('ai', `Processing ${action} request...`, true);
-
-    // Simulate AI processing
-    setTimeout(() => {
-        let response = '';
-
-        switch (action) {
-            case 'generate':
-                response = simulateGenerate();
-                break;
-            case 'improve':
-                response = simulateImprove(selectedText);
-                break;
-            case 'summarize':
-                response = simulateSummarize(selectedText);
-                break;
-            case 'expand':
-                response = simulateExpand(selectedText);
-                break;
-            case 'grammar':
-                response = simulateGrammarCheck(selectedText);
-                break;
-            case 'research':
-                response = simulateResearch();
-                break;
-        }
-
-        // Remove loading message
-        const messages = document.getElementById('chatMessages');
-        messages.removeChild(messages.lastChild);
-
-        // Add AI response
-        addChatMessage('ai', response);
-    }, 1500);
-}
-
-function sendChatMessage() {
-    const input = document.getElementById('chatInput');
-    const message = input.value.trim();
-
-    if (!message) return;
-
-    // Add user message
-    addChatMessage('user', message);
-    input.value = '';
+    // Animate the dashboard
+    animateAgents(action, agentKey, supportingKeys);
 
     // Simulate AI response
     setTimeout(() => {
-        const response = generateAIResponse(message);
-        addChatMessage('ai', response);
-    }, 1000);
-}
-
-function addChatMessage(type, content, isLoading = false) {
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${type}-message`;
-
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.textContent = type === 'ai' ? '🤖' : 'JD';
-
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-
-    if (isLoading) {
-        contentDiv.innerHTML = '<p>⏳ ' + content + '</p>';
-    } else {
-        contentDiv.innerHTML = `<p>${content}</p>`;
-    }
-
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(contentDiv);
-    messagesContainer.appendChild(messageDiv);
-
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function handleSuggestionClick(suggestion) {
-    document.getElementById('chatInput').value = suggestion;
-    sendChatMessage();
-}
-
-// AI Simulation Functions
-function simulateGenerate() {
-    return `I can help you generate content! Based on your current document, here's a suggestion:\n\n"${state.currentAgent === 'creative' ? 'In the realm of possibilities, where ideas dance like fireflies in the twilight...' : 'This section explores the fundamental concepts and provides a comprehensive overview of the topic...'}"\n\nWould you like me to continue or adjust the tone?`;
-}
-
-function simulateImprove(text) {
-    if (!text) return 'Please select some text first, and I\'ll help improve it!';
-    return `Here's an improved version:\n\n"${text.substring(0, 50)}..." → "${text.substring(0, 50).replace(/\b\w/g, l => l.toUpperCase())}..."\n\nI've enhanced clarity, flow, and word choice. Apply this change?`;
-}
-
-function simulateSummarize(text) {
-    if (!text) return 'Please select text to summarize!';
-    return `Summary: The selected text discusses key concepts and provides important context. Main points include foundational ideas and practical applications.\n\nWould you like a more detailed summary?`;
-}
-
-function simulateExpand(text) {
-    if (!text) return 'Please select text to expand!';
-    return `I can expand on "${text.substring(0, 30)}..." by:\n\n1. Adding supporting details\n2. Including relevant examples\n3. Providing deeper context\n4. Connecting to related concepts\n\nWhich approach would you prefer?`;
-}
-
-function simulateGrammarCheck(text) {
-    if (!text) return 'Please select text to check!';
-    return `✅ Grammar check complete!\n\nFound 2 suggestions:\n1. Consider "you're" instead of "your" (line 5)\n2. Add comma after introductory phrase (line 8)\n\nOverall score: 95/100`;
-}
-
-function simulateResearch() {
-    return `🔍 Research Assistant activated!\n\nI can help you:\n• Find relevant sources\n• Verify facts\n• Generate citations\n• Summarize research papers\n\nWhat topic would you like to research?`;
-}
-
-function generateAIResponse(message) {
-    const lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.includes('outline')) {
-        return `Great! I'll help you create an outline. Based on your topic, here's a suggested structure:\n\n1. Introduction\n2. Background & Context\n3. Main Arguments\n4. Analysis\n5. Conclusion\n\nWould you like me to expand any section?`;
-    } else if (lowerMessage.includes('improve') || lowerMessage.includes('better')) {
-        return `I can help improve your writing! I'll focus on:\n• Clarity and conciseness\n• Flow and transitions\n• Word choice and variety\n• Grammar and style\n\nSelect the text you'd like me to improve.`;
-    } else if (lowerMessage.includes('source') || lowerMessage.includes('research')) {
-        return `I'll help you find sources! What specific topic or question would you like me to research? I can:\n• Find academic papers\n• Locate credible sources\n• Generate citations\n• Summarize findings`;
-    } else {
-        return `I understand you're asking about "${message}". As your ${state.currentAgent.replace('-', ' ')}, I'm here to help! Could you provide more details about what you'd like me to do?`;
-    }
-}
-
-function showRealtimeSuggestions() {
-    // Simulate real-time AI suggestions
-    const suggestions = [
-        { type: 'Grammar', text: 'Consider using "their" instead of "there"' },
-        { type: 'Style', text: 'This sentence could be more concise' },
-        { type: 'Clarity', text: 'Consider rephrasing for better clarity' }
-    ];
-
-    const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
-    updateSuggestionsList([randomSuggestion]);
-}
-
-function updateSuggestionsList(suggestions) {
-    const list = document.getElementById('suggestionsList');
-    list.innerHTML = '';
-
-    suggestions.forEach(suggestion => {
-        const item = document.createElement('div');
-        item.className = 'suggestion-item';
-        item.innerHTML = `
-            <div class="suggestion-header">
-                <span class="suggestion-type">${suggestion.type}</span>
-                <button class="btn-apply" onclick="applySuggestion('${suggestion.text}')">Apply</button>
-            </div>
-            <div class="suggestion-text">${suggestion.text}</div>
-        `;
-        list.appendChild(item);
-    });
-}
-
-function applySuggestion(suggestion) {
-    addChatMessage('ai', `Applied suggestion: ${suggestion}`);
-    // In a real app, this would apply the actual change
-}
-
-function updateAIAgentInfo() {
-    const agentDescriptions = {
-        'orchestrator': 'Coordinates all AI agents for comprehensive assistance',
-        'research': 'Finds sources, verifies facts, and manages citations',
-        'editorial': 'Improves structure, flow, and organization',
-        'creative': 'Enhances imagery, metaphors, and emotional impact',
-        'academic': 'Ensures scholarly rigor and proper citations',
-        'proofreader': 'Checks grammar, spelling, and style'
-    };
-
-    const description = agentDescriptions[state.currentAgent];
-    addChatMessage('ai', `Switched to ${state.currentAgent.replace('-', ' ')} agent. ${description}`);
-}
-
-function showLevelNotification() {
-    const levelDescriptions = {
-        'sentence': 'Real-time suggestions as you type',
-        'paragraph': 'On-demand paragraph analysis',
-        'section': 'Comprehensive section review',
-        'document': 'Full document analysis'
-    };
-
-    const description = levelDescriptions[state.currentLevel];
-    addChatMessage('ai', `Assistance level set to ${state.currentLevel}. ${description}`);
-}
-
-// Utility Functions
-function simulateAutoSave() {
-    const saveStatus = document.querySelector('.save-status');
-    saveStatus.textContent = '💾 Saving...';
-
-    setTimeout(() => {
-        saveStatus.textContent = '💾 Saved';
-    }, 1000);
-}
-
-function simulateAIPresence() {
-    // Simulate AI being active
-    setInterval(() => {
-        const statusText = document.querySelector('.status-left .status-item:nth-child(2) span:last-child');
-        const seconds = Math.floor(Math.random() * 10) + 1;
-        statusText.textContent = `Synced ${seconds} seconds ago`;
-    }, 5000);
-}
-
-function scrollToSection(section) {
-    // In a real app, this would scroll to the section in the editor
-    console.log('Scrolling to section:', section);
-}
-
-function handleExport(format) {
-    addChatMessage('ai', `Exporting document as ${format}... This feature will be available in the full version!`);
-    document.getElementById('exportModal').classList.remove('active');
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
+        const responses = {
+            synonym:      'Synonyms found: alternative, substitute, equivalent.',
+            define:       'Definition retrieved and added to the side panel.',
+            rephrase:     'Rephrased for clarity: ' + (state.selectedText || '').substring(0, 60) + '…',
+            simplify:     'Simplified version ready.',
+            expand:       'Expanded with supporting detail.',
+            grammar:      'Grammar check complete — 2 suggestions found.',
+            improve:      'Flow improved with stronger transitions.',
+            restructure:  'Restructured for better impact.',
+            tone:         'Tone adjusted to match your style profile.',
+            'fact-check': 'Fact check complete — all claims verified.',
+            summarize:    'Summary: ' + (state.selectedText || '').substring(0, 80) + '…',
+            outline:      'Outline generated: 3 sections, 8 key points.',
+            enhance:      'Section enhanced for clarity and engagement.',
+            citations:    '3 relevant citations suggested.',
+            analyze:      'Document analysis complete. Quality: Good. Issues: 4.',
+            consistency:  'Style consistency check complete.',
+            accessibility:'Accessibility score: 82/100. 3 improvements suggested.',
+            export:       'Export options ready: PDF, DOCX, Markdown.',
+            custom:       'AI is ready to assist with your custom request.'
         };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
+
+        const msg = responses[action] || 'AI suggestion applied.';
+        showNotification(`✓ ${msg}`, 'success');
+        recordAccepted();
+    }, state.interactionMode === 'silent' ? 800 : 1600);
+
+    // Update status bar
+    document.getElementById('statusAgent').textContent = agentInfo.name;
 }
 
-// Keyboard Shortcuts
-document.addEventListener('keydown', (e) => {
-    // Ctrl/Cmd + S for save
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        simulateAutoSave();
-    }
+// ── View / Stats / UI helpers ─────────────────────────────────────────────────
+function switchView(view) {
+    state.currentView = view;
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    document.querySelectorAll('.edit-view, .preview-view').forEach(el => {
+        el.classList.toggle('active', el.classList.contains(`${view}-view`));
+    });
+    if (view === 'preview') updatePreview();
+}
 
-    // Ctrl/Cmd + B for bold
-    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        applyFormatting('bold');
-    }
+function updatePreview() {
+    const editor  = document.getElementById('editor');
+    const preview = document.getElementById('previewContent');
+    preview.innerHTML = editor.innerHTML;
+}
 
-    // Ctrl/Cmd + I for italic
-    if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
-        e.preventDefault();
-        applyFormatting('italic');
-    }
-});
+function updateStats() {
+    const editor = document.getElementById('editor');
+    const text   = editor.textContent;
 
-// Initialize preview on load
-window.addEventListener('load', () => {
-    updatePreview();
-});
+    const words      = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+    const characters = text.length;
+    const paragraphs = editor.querySelectorAll('p').length || text.split('\n\n').filter(p => p.trim()).length;
+    const readingTime = Math.max(1, Math.ceil(words / 200));
+
+    state.documentStats = { words, characters, paragraphs, readingTime };
+
+    document.getElementById('wordCount').textContent    = words;
+    document.getElementById('charCount').textContent    = characters;
+    document.getElementById('readTime').textContent     = `${readingTime} min`;
+    document.getElementById('selectedCount').textContent = '0 words';
+}
+
+function updateSelectionInfo() {
+    const info = document.getElementById('selectionInfo');
+    if (state.selectedText) {
+        const wc = state.selectedText.split(/\s+/).filter(w => w.length > 0).length;
+        info.textContent = `Selected: ${wc} word${wc !== 1 ? 's' : ''}`;
+        document.getElementById('selectedCount').textContent = `${wc} word${wc !== 1 ? 's' : ''}`;
+    } else {
+        info.textContent = `Mode: ${state.selectionMode}`;
+        document.getElementById('selectedCount').textContent = '0 words';
+    }
+}
+
+function updateSelectionModeInfo() {
+    const modeDescriptions = {
+        word:      { desc: 'Double-click a word for synonyms, definitions, and translations.' },
+        sentence:  { desc: 'Click to select a sentence for rephrasing and grammar checks.' },
+        paragraph: { desc: 'Select a paragraph to improve flow, restructure, or adjust tone.' },
+        section:   { desc: 'Select multiple paragraphs for summaries, outlines, and enhancements.' },
+        document:  { desc: 'Work with the entire document for analysis and consistency checks.' }
+    };
+    const el = document.getElementById('modeDescription');
+    if (el) el.textContent = modeDescriptions[state.selectionMode]?.desc || '';
+}
+
+function updateSaveStatus() {
+    const status = document.querySelector('.save-status');
+    if (!status) return;
+    status.textContent = '⏳ Saving…';
+    setTimeout(() => { status.textContent = '💾 Saved'; }, 1000);
+}
+
+function handleKeyboardShortcuts(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); updateSaveStatus(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); switchView('preview'); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') { e.preventDefault(); switchView('edit'); }
+    if (e.key === 'Escape') hideAIMenu();
+}
+
+// ── Notification ──────────────────────────────────────────────────────────────
+function showNotification(message, type = 'info') {
+    const n = document.createElement('div');
+    n.style.cssText = `
+        position: fixed; top: 80px; right: 20px;
+        background: ${type === 'success' ? '#10b981' : '#2563eb'};
+        color: white; padding: 1rem 1.5rem; border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        z-index: 2000; animation: slideIn 0.3s ease-out; max-width: 400px;
+        font-size: 0.875rem;
+    `;
+    n.textContent = message;
+    document.body.appendChild(n);
+    setTimeout(() => {
+        n.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => n.remove(), 300);
+    }, 3000);
+}
+
+// Animation styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn  { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
+`;
+document.head.appendChild(style);
 
 // Made with Bob

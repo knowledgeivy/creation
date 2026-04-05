@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-Powered Writing Platform - Demo</title>
+    <title>AI-Powered Writing Platform</title>
     <link rel="stylesheet" href="writing-app.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -41,8 +41,20 @@
                 </div>
             </div>
             <div class="nav-right">
+                <!-- Selection Granularity Selector -->
+                <div class="granularity-selector">
+                    <label for="granularitySelect">Select:</label>
+                    <select id="granularitySelect" class="granularity-select">
+                        <option value="word">Word</option>
+                        <option value="sentence" selected>Sentence</option>
+                        <option value="paragraph">Paragraph</option>
+                        <option value="section">Section</option>
+                        <option value="document">Document</option>
+                    </select>
+                </div>
                 <button class="btn-icon" id="shareBtn" title="Share">👥</button>
                 <button class="btn-icon" id="exportBtn" title="Export">📥</button>
+                <button class="btn-icon" id="aiDashboardToggle" title="AI Team Dashboard">🤖</button>
                 <button class="btn-icon" id="settingsBtn" title="Settings">⚙️</button>
                 <div class="user-avatar">JD</div>
             </div>
@@ -86,6 +98,27 @@
                             <span class="stat-label">Reading Time:</span>
                             <span class="stat-value" id="readTime">0 min</span>
                         </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Selected:</span>
+                            <span class="stat-value" id="selectedCount">0 words</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h4>🎯 Selection Mode</h4>
+                    <div class="selection-mode-info">
+                        <p class="mode-description" id="modeDescription">
+                            <strong>Sentence Mode:</strong> Click to select entire sentences for AI assistance.
+                        </p>
+                        <div class="mode-tips">
+                            <p><strong>Tips:</strong></p>
+                            <ul>
+                                <li>Click text to select by current mode</li>
+                                <li>Right-click for AI suggestions</li>
+                                <li>Use toolbar to change mode</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -101,6 +134,65 @@
                 </div>
             </aside>
 
+            <!-- Right Sidebar - AI Team Dashboard -->
+            <aside class="right-sidebar" id="aiDashboard">
+                <div class="dashboard-header">
+                    <h3>🤖 AI Team</h3>
+                    <button class="btn-icon-sm" id="closeDashboard" title="Close">×</button>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Automation Level</h4>
+                    <div class="mode-toggle" id="automationToggle">
+                        <button class="mode-btn active" data-level="manual">Manual</button>
+                        <button class="mode-btn" data-level="assisted">Assisted</button>
+                        <button class="mode-btn" data-level="automatic">Auto</button>
+                    </div>
+                    <p class="mode-hint" id="automationHint">You trigger all AI actions.</p>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Interaction Mode</h4>
+                    <div class="mode-toggle" id="interactionToggle">
+                        <button class="mode-btn" data-mode="silent">Silent</button>
+                        <button class="mode-btn active" data-mode="collaborative">Collab</button>
+                        <button class="mode-btn" data-mode="educational">Learn</button>
+                        <button class="mode-btn" data-mode="expert">Expert</button>
+                    </div>
+                    <p class="mode-hint" id="interactionHint">All agents visible, full activity shown.</p>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Agent Roster</h4>
+                    <div id="agentRoster" class="agent-roster"></div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Activity Log</h4>
+                    <div id="activityLog" class="activity-log">
+                        <div class="log-empty">No activity yet. Trigger an AI action to see agents at work.</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Session Metrics</h4>
+                    <div class="metrics">
+                        <div class="metric-item">
+                            <span class="metric-label">Requests</span>
+                            <span class="metric-value" id="metricRequests">0</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Avg Response</span>
+                            <span class="metric-value" id="metricResponseTime">—</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Accepted</span>
+                            <span class="metric-value" id="metricAccepted">—</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
             <!-- Center - Editor -->
             <main class="editor-container">
                 <div class="editor-wrapper">
@@ -108,7 +200,9 @@
                         <div class="view-toggle">
                             <button class="view-btn active" data-view="edit">✏️ Edit</button>
                             <button class="view-btn" data-view="preview">👁️ Preview</button>
-                            <button class="view-btn" data-view="split">⚡ Split</button>
+                        </div>
+                        <div class="editor-info">
+                            <span class="selection-info" id="selectionInfo">No selection</span>
                         </div>
                         <div class="editor-actions">
                             <button class="btn-sm" id="undoBtn">↶ Undo</button>
@@ -119,27 +213,34 @@
                     <div class="editor-content">
                         <!-- Edit View -->
                         <div class="edit-view active" id="editView">
-                            <textarea id="editor" class="editor-textarea"
-                                placeholder="Start writing... or ask AI for help!">
-# Welcome to AI-Powered Writing Platform
+                            <div id="editor" class="editor-area" contenteditable="true">
+                                <h1>Welcome to AI-Powered Writing Platform</h1>
+                                <p>Start writing your document here. You can select text at different granularity levels
+                                    and get AI assistance.</p>
 
-Start writing your document here. You can:
+                                <h2>Getting Started</h2>
+                                <p>Try selecting text using different modes:</p>
+                                <ul>
+                                    <li><strong>Word Mode:</strong> Select individual words</li>
+                                    <li><strong>Sentence Mode:</strong> Click to select entire sentences</li>
+                                    <li><strong>Paragraph Mode:</strong> Click to select whole paragraphs</li>
+                                    <li><strong>Section Mode:</strong> Select entire sections</li>
+                                    <li><strong>Document Mode:</strong> Work with the entire document</li>
+                                </ul>
 
-- Use the AI Assistant on the right for suggestions
-- Format text with the toolbar above
-- Organize content with the outline on the left
-- Collaborate in real-time with others
+                                <h2>AI Assistance</h2>
+                                <p>After selecting text, right-click or use the AI menu to:</p>
+                                <ul>
+                                    <li>Generate content</li>
+                                    <li>Improve writing style</li>
+                                    <li>Check grammar</li>
+                                    <li>Expand ideas</li>
+                                    <li>Summarize content</li>
+                                    <li>Get research suggestions</li>
+                                </ul>
 
-## Getting Started
-
-Try asking the AI assistant to:
-1. Generate an outline for your topic
-2. Expand on your ideas
-3. Improve your writing style
-4. Check grammar and clarity
-
-Happy writing! ✍️
-                            </textarea>
+                                <p>Happy writing! ✍️</p>
+                            </div>
                         </div>
 
                         <!-- Preview View -->
@@ -149,129 +250,122 @@ Happy writing! ✍️
                     </div>
                 </div>
             </main>
+        </div>
 
-            <!-- Right Sidebar - AI Assistant -->
-            <aside class="right-sidebar">
-                <div class="ai-header">
-                    <h3>🤖 AI Assistant</h3>
-                    <button class="btn-icon-sm" id="aiSettingsBtn">⚙️</button>
-                </div>
-
-                <!-- AI Agent Selector -->
-                <div class="ai-agent-selector">
-                    <label>Active Agent:</label>
-                    <select id="agentSelect" class="agent-select">
-                        <option value="orchestrator">🎯 AI Orchestrator</option>
-                        <option value="research">🔍 Research Agent</option>
-                        <option value="editorial">✏️ Editorial Agent</option>
-                        <option value="creative">🎨 Creative Agent</option>
-                        <option value="academic">🎓 Academic Agent</option>
-                        <option value="proofreader">📝 Proofreading Agent</option>
-                    </select>
-                </div>
-
-                <!-- AI Assistance Level -->
-                <div class="ai-level-selector">
-                    <label>Assistance Level:</label>
-                    <div class="level-buttons">
-                        <button class="level-btn" data-level="sentence" title="Sentence-level (Real-time)">
-                            <span class="level-icon">📝</span>
-                            <span class="level-text">Sentence</span>
-                        </button>
-                        <button class="level-btn active" data-level="paragraph" title="Paragraph-level">
-                            <span class="level-icon">📄</span>
-                            <span class="level-text">Paragraph</span>
-                        </button>
-                        <button class="level-btn" data-level="section" title="Section-level">
-                            <span class="level-icon">📋</span>
-                            <span class="level-text">Section</span>
-                        </button>
-                        <button class="level-btn" data-level="document" title="Document-level">
-                            <span class="level-icon">📚</span>
-                            <span class="level-text">Document</span>
-                        </button>
+        <!-- AI Assistance Pulldown Menu -->
+        <div id="aiMenu" class="ai-menu" style="display: none;">
+            <div class="ai-menu-header">
+                <span class="ai-menu-title">🤖 AI Assistance</span>
+                <span class="ai-menu-agent" id="currentAgent">Orchestrator</span>
+            </div>
+            <div class="ai-menu-content">
+                <button class="ai-menu-item" data-action="generate">
+                    <span class="ai-menu-icon">✨</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Generate Content</div>
+                        <div class="ai-menu-desc">Create new content based on context</div>
                     </div>
-                </div>
+                </button>
+                <button class="ai-menu-item" data-action="improve">
+                    <span class="ai-menu-icon">🔧</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Improve Writing</div>
+                        <div class="ai-menu-desc">Enhance clarity and style</div>
+                    </div>
+                </button>
+                <button class="ai-menu-item" data-action="grammar">
+                    <span class="ai-menu-icon">✅</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Check Grammar</div>
+                        <div class="ai-menu-desc">Fix grammar and spelling</div>
+                    </div>
+                </button>
+                <button class="ai-menu-item" data-action="expand">
+                    <span class="ai-menu-icon">📈</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Expand Ideas</div>
+                        <div class="ai-menu-desc">Add more detail and examples</div>
+                    </div>
+                </button>
+                <button class="ai-menu-item" data-action="summarize">
+                    <span class="ai-menu-icon">📊</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Summarize</div>
+                        <div class="ai-menu-desc">Condense to key points</div>
+                    </div>
+                </button>
+                <button class="ai-menu-item" data-action="research">
+                    <span class="ai-menu-icon">🔍</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Research Topic</div>
+                        <div class="ai-menu-desc">Find sources and facts</div>
+                    </div>
+                </button>
+                <div class="ai-menu-divider"></div>
+                <button class="ai-menu-item" data-action="change-agent">
+                    <span class="ai-menu-icon">🎯</span>
+                    <div class="ai-menu-text">
+                        <div class="ai-menu-label">Change AI Agent</div>
+                        <div class="ai-menu-desc">Switch to specialized agent</div>
+                    </div>
+                </button>
+            </div>
+        </div>
 
-                <!-- Quick Actions -->
-                <div class="quick-actions">
-                    <h4>⚡ Quick Actions</h4>
-                    <button class="action-btn" data-action="generate">
-                        <span class="action-icon">✨</span>
-                        <span class="action-text">Generate Content</span>
-                    </button>
-                    <button class="action-btn" data-action="improve">
-                        <span class="action-icon">🔧</span>
-                        <span class="action-text">Improve Writing</span>
-                    </button>
-                    <button class="action-btn" data-action="summarize">
-                        <span class="action-icon">📊</span>
-                        <span class="action-text">Summarize</span>
-                    </button>
-                    <button class="action-btn" data-action="expand">
-                        <span class="action-icon">📈</span>
-                        <span class="action-text">Expand Ideas</span>
-                    </button>
-                    <button class="action-btn" data-action="grammar">
-                        <span class="action-icon">✅</span>
-                        <span class="action-text">Check Grammar</span>
-                    </button>
-                    <button class="action-btn" data-action="research">
-                        <span class="action-icon">🔍</span>
-                        <span class="action-text">Research Topic</span>
-                    </button>
+        <!-- AI Agent Selector Modal -->
+        <div id="agentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🤖 Select AI Agent</h2>
+                    <button class="modal-close">×</button>
                 </div>
-
-                <!-- AI Chat Interface -->
-                <div class="ai-chat">
-                    <h4>💬 Chat with AI</h4>
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="chat-message ai-message">
-                            <div class="message-avatar">🤖</div>
-                            <div class="message-content">
-                                <p>Hello! I'm your AI writing assistant. How can I help you today?</p>
-                                <div class="message-suggestions">
-                                    <button class="suggestion-btn">Generate outline</button>
-                                    <button class="suggestion-btn">Improve this paragraph</button>
-                                    <button class="suggestion-btn">Find sources</button>
-                                </div>
-                            </div>
+                <div class="modal-body">
+                    <div class="agent-grid">
+                        <div class="agent-card" data-agent="orchestrator">
+                            <div class="agent-icon">🎯</div>
+                            <div class="agent-name">AI Orchestrator</div>
+                            <div class="agent-desc">Coordinates all agents for comprehensive assistance</div>
                         </div>
-                    </div>
-                    <div class="chat-input-container">
-                        <textarea id="chatInput" class="chat-input" placeholder="Ask AI anything..."
-                            rows="2"></textarea>
-                        <button id="sendChatBtn" class="btn-send">
-                            <span>Send</span>
-                            <span class="send-icon">➤</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- AI Suggestions Panel -->
-                <div class="ai-suggestions" id="aiSuggestions">
-                    <h4>💡 Suggestions</h4>
-                    <div class="suggestions-list" id="suggestionsList">
-                        <div class="suggestion-item">
-                            <div class="suggestion-header">
-                                <span class="suggestion-type">Grammar</span>
-                                <button class="btn-apply">Apply</button>
-                            </div>
-                            <div class="suggestion-text">
-                                Consider changing "your" to "you're" in line 5
-                            </div>
+                        <div class="agent-card" data-agent="research">
+                            <div class="agent-icon">🔍</div>
+                            <div class="agent-name">Research Agent</div>
+                            <div class="agent-desc">Finds sources, verifies facts, manages citations</div>
+                        </div>
+                        <div class="agent-card" data-agent="editorial">
+                            <div class="agent-icon">✏️</div>
+                            <div class="agent-name">Editorial Agent</div>
+                            <div class="agent-desc">Improves structure, flow, and organization</div>
+                        </div>
+                        <div class="agent-card" data-agent="creative">
+                            <div class="agent-icon">🎨</div>
+                            <div class="agent-name">Creative Agent</div>
+                            <div class="agent-desc">Enhances imagery, metaphors, emotional impact</div>
+                        </div>
+                        <div class="agent-card" data-agent="academic">
+                            <div class="agent-icon">🎓</div>
+                            <div class="agent-name">Academic Agent</div>
+                            <div class="agent-desc">Ensures scholarly rigor and proper citations</div>
+                        </div>
+                        <div class="agent-card" data-agent="proofreader">
+                            <div class="agent-icon">📝</div>
+                            <div class="agent-name">Proofreading Agent</div>
+                            <div class="agent-desc">Checks grammar, spelling, and style</div>
                         </div>
                     </div>
                 </div>
-            </aside>
+            </div>
         </div>
 
         <!-- Status Bar -->
         <footer class="status-bar">
             <div class="status-left">
                 <span class="status-item">
-                    <span class="status-icon">👥</span>
-                    <span>1 collaborator online</span>
+                    <span class="status-icon">🎯</span>
+                    <span id="statusMode">Sentence Mode</span>
+                </span>
+                <span class="status-item">
+                    <span class="status-icon">🤖</span>
+                    <span id="statusAgent">Orchestrator</span>
                 </span>
                 <span class="status-item">
                     <span class="status-icon">🔄</span>
@@ -279,49 +373,11 @@ Happy writing! ✍️
                 </span>
             </div>
             <div class="status-right">
-                <span class="status-item">Line 1, Column 1</span>
+                <span class="status-item" id="cursorPosition">Line 1, Column 1</span>
                 <span class="status-item">UTF-8</span>
                 <span class="status-item">Markdown</span>
             </div>
         </footer>
-    </div>
-
-    <!-- Modals -->
-    <div id="exportModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>📥 Export Document</h2>
-                <button class="modal-close">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="export-options">
-                    <button class="export-option">
-                        <span class="export-icon">📄</span>
-                        <span class="export-name">PDF</span>
-                    </button>
-                    <button class="export-option">
-                        <span class="export-icon">📝</span>
-                        <span class="export-name">Word (DOCX)</span>
-                    </button>
-                    <button class="export-option">
-                        <span class="export-icon">📋</span>
-                        <span class="export-name">Markdown</span>
-                    </button>
-                    <button class="export-option">
-                        <span class="export-icon">🌐</span>
-                        <span class="export-name">HTML</span>
-                    </button>
-                    <button class="export-option">
-                        <span class="export-icon">📚</span>
-                        <span class="export-name">LaTeX</span>
-                    </button>
-                    <button class="export-option">
-                        <span class="export-icon">📖</span>
-                        <span class="export-name">EPUB</span>
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="writing-app.js"></script>
