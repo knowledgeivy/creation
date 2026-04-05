@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Writing Platform - Design Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🚀 AI-Powered Writing Platform</h1>
+                <p class="subtitle">Design Documentation Explorer</p>
+            </div>
+            <div class="header-actions">
+                <input type="text" id="searchInput" placeholder="Search documentation..." class="search-input">
+                <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>📚 Documentation</h2>
+                </div>
+
+                <nav class="nav-menu">
+                    <div class="nav-section">
+                        <h3>📋 Overview</h3>
+                        <ul>
+                            <li><a href="#" data-doc="00-design-summary" class="nav-link active">
+                                    <span class="icon">⭐</span>
+                                    <span>Design Summary</span>
+                                </a></li>
+                        </ul>
+                    </div>
+
+                    <div class="nav-section">
+                        <h3>🏗️ Level 1: Architecture</h3>
+                        <ul>
+                            <li><a href="#" data-doc="01-system-overview" class="nav-link">
+                                    <span class="icon">📋</span>
+                                    <span>System Overview</span>
+                                </a></li>
+                            <li><a href="#" data-doc="02-architecture-diagram" class="nav-link">
+                                    <span class="icon">🏗️</span>
+                                    <span>Architecture Diagrams</span>
+                                </a></li>
+                        </ul>
+                    </div>
+
+                    <div class="nav-section">
+                        <h3>⚙️ Level 2: Core Systems</h3>
+                        <ul>
+                            <li><a href="#" data-doc="03-user-management" class="nav-link">
+                                    <span class="icon">👤</span>
+                                    <span>User Management</span>
+                                </a></li>
+                            <li><a href="#" data-doc="04-collaborative-editing" class="nav-link">
+                                    <span class="icon">🤝</span>
+                                    <span>Collaborative Editing</span>
+                                </a></li>
+                            <li><a href="#" data-doc="05-ai-integration" class="nav-link">
+                                    <span class="icon">🤖</span>
+                                    <span>AI Integration</span>
+                                </a></li>
+                            <li><a href="#" data-doc="05a-ai-writing-lifecycle" class="nav-link sub-item">
+                                    <span class="icon">📝</span>
+                                    <span>AI Writing Lifecycle</span>
+                                </a></li>
+                            <li><a href="#" data-doc="05b-multi-agent-ai-system" class="nav-link sub-item">
+                                    <span class="icon">🎯</span>
+                                    <span>Multi-Agent AI System</span>
+                                </a></li>
+                            <li><a href="#" data-doc="05c-ai-integration-guide" class="nav-link sub-item">
+                                    <span class="icon">🔗</span>
+                                    <span>AI Integration Guide</span>
+                                </a></li>
+                            <li><a href="#" data-doc="06-multimedia-system" class="nav-link">
+                                    <span class="icon">🎬</span>
+                                    <span>Multimedia System</span>
+                                </a></li>
+                            <li><a href="#" data-doc="07-document-system" class="nav-link">
+                                    <span class="icon">📄</span>
+                                    <span>Document System</span>
+                                </a></li>
+                        </ul>
+                    </div>
+
+                    <div class="nav-section">
+                        <h3>🔧 Resources</h3>
+                        <ul>
+                            <li><a href="#" data-doc="POLISH-PLAN" class="nav-link">
+                                    <span class="icon">✨</span>
+                                    <span>Polish Plan</span>
+                                </a></li>
+                        </ul>
+                    </div>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="progress-indicator">
+                        <div class="progress-label">Documentation Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 70%"></div>
+                        </div>
+                        <div class="progress-text">Level 1 & 2 Complete (70%)</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="content">
+                <div class="content-header">
+                    <div class="breadcrumb" id="breadcrumb">
+                        <span>Home</span>
+                    </div>
+                    <div class="content-actions">
+                        <button id="tocToggle" class="btn-icon" title="Toggle table of contents">📑</button>
+                        <button id="printBtn" class="btn-icon" title="Print document">🖨️</button>
+                        <button id="shareBtn" class="btn-icon" title="Share">🔗</button>
+                    </div>
+                </div>
+
+                <div class="content-body">
+                    <div id="documentContent" class="markdown-body">
+                        <!-- Content will be loaded here -->
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading documentation...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-footer">
+                    <div class="doc-navigation">
+                        <button id="prevDoc" class="nav-btn" disabled>
+                            <span>← Previous</span>
+                        </button>
+                        <button id="nextDoc" class="nav-btn">
+                            <span>Next →</span>
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Table of Contents Sidebar -->
+            <aside class="toc-sidebar" id="tocSidebar">
+                <div class="toc-header">
+                    <h3>📑 Table of Contents</h3>
+                    <button id="tocClose" class="btn-close">×</button>
+                </div>
+                <nav id="tocContent" class="toc-content">
+                    <!-- TOC will be generated here -->
+                </nav>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Quick Info Modal -->
+    <div id="quickInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🚀 Quick Start Guide</h2>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-section">
+                    <h3>📖 Recommended Reading Order</h3>
+                    <ol>
+                        <li><strong>Quick Overview (15 min)</strong>
+                            <ul>
+                                <li>00-design-summary.md</li>
+                                <li>05c-ai-integration-guide.md</li>
+                            </ul>
+                        </li>
+                        <li><strong>Technical Understanding (1 hour)</strong>
+                            <ul>
+                                <li>01-system-overview.md</li>
+                                <li>02-architecture-diagram.md</li>
+                                <li>05a-ai-writing-lifecycle.md</li>
+                                <li>05b-multi-agent-ai-system.md</li>
+                            </ul>
+                        </li>
+                        <li><strong>Complete Deep Dive (3-4 hours)</strong>
+                            <ul>
+                                <li>Read all documents in order</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+                <div class="info-section">
+                    <h3>✨ Key Features</h3>
+                    <ul>
+                        <li>🤖 Multi-Agent AI System (11 specialized agents)</li>
+                        <li>🤝 Real-time CRDT-based collaboration</li>
+                        <li>📝 4-level AI assistance (Sentence → Document)</li>
+                        <li>🎬 Comprehensive multimedia support</li>
+                    </ul>
+                </div>
+                <div class="info-section">
+                    <h3>🎯 Navigation Tips</h3>
+                    <ul>
+                        <li>Use the sidebar to navigate between documents</li>
+                        <li>Click 📑 to show/hide table of contents</li>
+                        <li>Use search to find specific topics</li>
+                        <li>Toggle dark mode with 🌙</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary modal-close">Get Started</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
