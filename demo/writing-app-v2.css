@@ -217,6 +217,7 @@ body {
 
 /* Left Sidebar */
 .left-sidebar {
+    order: 1;
     width: var(--sidebar-width);
     background: var(--bg-primary);
     border-right: 1px solid var(--border-color);
@@ -400,6 +401,7 @@ body {
 
 /* Editor Container */
 .editor-container {
+    order: 2;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -828,6 +830,249 @@ body {
     .granularity-selector label {
         display: none;
     }
+}
+
+/* ── AI Team Dashboard (Right Sidebar) ─────────────────────────── */
+
+.right-sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    order: 3; /* renders after editor */
+    transition: width 0.25s ease, min-width 0.25s ease, opacity 0.25s ease;
+}
+
+.right-sidebar.hidden {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    border-left: none;
+}
+
+.dashboard-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 10;
+}
+
+.dashboard-header h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.dashboard-section {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-section h4 {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    margin-bottom: 0.625rem;
+}
+
+/* Mode toggle buttons */
+.mode-toggle {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-tertiary);
+    padding: 0.2rem;
+    border-radius: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 0.3rem 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.mode-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.mode-btn.active {
+    background: white;
+    color: var(--primary-color);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+.mode-hint {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+}
+
+/* Agent Roster */
+.agent-roster {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.roster-agent {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    transition: background 0.15s;
+}
+
+.roster-agent.working {
+    background: rgba(37, 99, 235, 0.07);
+}
+
+.roster-agent.done {
+    background: rgba(16, 185, 129, 0.07);
+}
+
+.agent-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--bg-hover);
+    transition: background 0.3s;
+}
+
+.agent-status-dot.idle    { background: #d1d5db; }
+.agent-status-dot.queued  { background: var(--warning-color); }
+.agent-status-dot.working {
+    background: var(--primary-color);
+    animation: pulse-dot 1s infinite;
+}
+.agent-status-dot.done    { background: var(--success-color); }
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(1.3); }
+}
+
+.roster-agent-icon { font-size: 0.9rem; }
+
+.roster-agent-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.roster-agent-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.roster-agent-status {
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+}
+
+.roster-agent.working .roster-agent-status { color: var(--primary-color); }
+.roster-agent.done    .roster-agent-status { color: var(--success-color); }
+
+/* Activity Log */
+.activity-log {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 0.75rem;
+}
+
+.log-empty {
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.log-entry {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 0.3rem;
+    background: var(--bg-secondary);
+    animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.log-time {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.log-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.log-agent {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.log-message {
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.log-entry.educational .log-message {
+    color: var(--secondary-color);
+    font-style: italic;
+}
+
+/* Session Metrics */
+.metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.metric-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.metric-label { color: var(--text-secondary); }
+
+.metric-value {
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 /* Made with Bob */

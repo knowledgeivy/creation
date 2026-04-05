@@ -54,6 +54,7 @@
                 </div>
                 <button class="btn-icon" id="shareBtn" title="Share">👥</button>
                 <button class="btn-icon" id="exportBtn" title="Export">📥</button>
+                <button class="btn-icon" id="aiDashboardToggle" title="AI Team Dashboard">🤖</button>
                 <button class="btn-icon" id="settingsBtn" title="Settings">⚙️</button>
                 <div class="user-avatar">JD</div>
             </div>
@@ -129,6 +130,65 @@
                             <span>You</span>
                         </div>
                         <button class="btn-add-collab">+ Invite</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Sidebar - AI Team Dashboard -->
+            <aside class="right-sidebar" id="aiDashboard">
+                <div class="dashboard-header">
+                    <h3>🤖 AI Team</h3>
+                    <button class="btn-icon-sm" id="closeDashboard" title="Close">×</button>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Automation Level</h4>
+                    <div class="mode-toggle" id="automationToggle">
+                        <button class="mode-btn active" data-level="manual">Manual</button>
+                        <button class="mode-btn" data-level="assisted">Assisted</button>
+                        <button class="mode-btn" data-level="automatic">Auto</button>
+                    </div>
+                    <p class="mode-hint" id="automationHint">You trigger all AI actions.</p>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Interaction Mode</h4>
+                    <div class="mode-toggle" id="interactionToggle">
+                        <button class="mode-btn" data-mode="silent">Silent</button>
+                        <button class="mode-btn active" data-mode="collaborative">Collab</button>
+                        <button class="mode-btn" data-mode="educational">Learn</button>
+                        <button class="mode-btn" data-mode="expert">Expert</button>
+                    </div>
+                    <p class="mode-hint" id="interactionHint">All agents visible, full activity shown.</p>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Agent Roster</h4>
+                    <div id="agentRoster" class="agent-roster"></div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Activity Log</h4>
+                    <div id="activityLog" class="activity-log">
+                        <div class="log-empty">No activity yet. Trigger an AI action to see agents at work.</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h4>Session Metrics</h4>
+                    <div class="metrics">
+                        <div class="metric-item">
+                            <span class="metric-label">Requests</span>
+                            <span class="metric-value" id="metricRequests">0</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Avg Response</span>
+                            <span class="metric-value" id="metricResponseTime">—</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Accepted</span>
+                            <span class="metric-value" id="metricAccepted">—</span>
+                        </div>
                     </div>
                 </div>
             </aside>
