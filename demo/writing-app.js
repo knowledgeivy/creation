@@ -74,7 +74,15 @@ const state = {
     dashboardVisible: true,
     automationLevel: 'manual',
     interactionMode: 'collaborative',
-    metrics: { requests: 0, responseTimes: [], accepted: 0 }
+    metrics: { requests: 0, responseTimes: [], accepted: 0 },
+
+    // For robust text replacement tracking
+    lastAISelection: {
+        sectionId: null,
+        originalText: '',
+        action: null,
+        agentInfo: null
+    }
 };
 
 // ── Agents ────────────────────────────────────────────────────────────────────
@@ -549,6 +557,12 @@ async function handleAIAction(action, agentKey, supportingKeys = []) {
         return;
     }
 
+    // Store selection info for later replacement (by section ID)
+    state.lastAISelection.sectionId = state.activeSectionId;
+    state.lastAISelection.originalText = state.selectedText;
+    state.lastAISelection.action = action;
+    state.lastAISelection.agentInfo = agentInfo;
+
     try {
         const result = await callAgentAPI(action, state.selectedText || '');
         showNotification(`✓ ${agentInfo.name}: Done`, 'success');
@@ -567,26 +581,59 @@ function showResultPanel(action, agentInfo, result) {
     const panel = document.createElement('div');
     panel.id = 'ai-result-panel';
     panel.style.cssText = `
-        position: fixed; bottom: 24px; right: 24px; width: 380px; max-height: 320px;
+        position: fixed; bottom: 24px; right: 24px; width: 420px; max-height: 480px;
         background: #1e293b; color: #e2e8f0; border-radius: 12px;
         box-shadow: 0 20px 40px rgba(0,0,0,0.4); z-index: 3000;
         display: flex; flex-direction: column; overflow: hidden;
-        font-size: 0.875rem; font-family: inherit;
+        font-size: 0.875rem; font-family: inherit; border: 1px solid #475569;
     `;
 
+    const originalText = state.lastAISelection.originalText;
+
     panel.innerHTML = `
-        <div style="padding: 12px 16px; background: #334155; display: flex; justify-content: space-between; align-items: center;">
+        <div style="padding: 12px 16px; background: #334155; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569;">
             <span>${agentInfo.icon} <strong>${agentInfo.name}</strong> — ${action}</span>
             <button id="closeResultPanel" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem;">✕</button>
         </div>
-        <div style="padding: 16px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6;">${escHtml(result)}</div>
-        <div style="padding: 10px 16px; background: #334155; display: flex; gap: 8px; justify-content: flex-end;">
-            <button id="copyResult" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2563eb; color: white; cursor: pointer; font-size: 0.8rem;">Copy</button>
-            <button id="applyResult" style="padding: 6px 14px; border-radius: 6px; border: none; background: #059669; color: white; cursor: pointer; font-size: 0.8rem;">Apply to selection</button>
+
+        <!-- Tabs -->
+        <div style="display: flex; gap: 0; background: #0f172a; border-bottom: 1px solid #475569;">
+            <button id="tabOriginal" class="result-tab active" style="flex: 1; padding: 10px; border: none; background: transparent; color: #94a3b8; cursor: pointer; border-bottom: 2px solid #3b82f6;">
+                Original
+            </button>
+            <button id="tabResult" class="result-tab" style="flex: 1; padding: 10px; border: none; background: transparent; color: #94a3b8; cursor: pointer;">
+                Result
+            </button>
+            <button id="tabPreview" class="result-tab" style="flex: 1; padding: 10px; border: none; background: transparent; color: #94a3b8; cursor: pointer;">
+                Preview
+            </button>
+        </div>
+
+        <!-- Content area -->
+        <div style="flex: 1; overflow-y: auto; padding: 16px; white-space: pre-wrap; line-height: 1.6;">
+            <div id="resultContent" class="result-view">${escHtml(originalText)}</div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 12px 16px; background: #334155; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #475569;">
+            <button id="copyResult" style="padding: 8px 14px; border-radius: 6px; border: none; background: #2563eb; color: white; cursor: pointer; font-size: 0.8rem;">📋 Copy</button>
+            <button id="applyResult" style="padding: 8px 14px; border-radius: 6px; border: none; background: #059669; color: white; cursor: pointer; font-size: 0.8rem;">✓ Apply</button>
         </div>
     `;
 
     document.body.appendChild(panel);
+
+    // Tab switching
+    const content = document.getElementById('resultContent');
+    document.getElementById('tabOriginal').addEventListener('click', (e) => {
+        switchResultTab(e, 'original', originalText, content);
+    });
+    document.getElementById('tabResult').addEventListener('click', (e) => {
+        switchResultTab(e, 'result', result, content);
+    });
+    document.getElementById('tabPreview').addEventListener('click', (e) => {
+        switchResultTab(e, 'preview', result, content, originalText);
+    });
 
     document.getElementById('closeResultPanel').addEventListener('click', () => panel.remove());
     document.getElementById('copyResult').addEventListener('click', () => {
@@ -594,13 +641,66 @@ function showResultPanel(action, agentInfo, result) {
         showNotification('Copied to clipboard', 'success');
     });
     document.getElementById('applyResult').addEventListener('click', () => {
-        if (state.selectedRange) {
-            state.selectedRange.deleteContents();
-            state.selectedRange.insertNode(document.createTextNode(result));
-        }
+        applyResultToSection(result);
         panel.remove();
-        showNotification('Applied to selection', 'success');
     });
+}
+
+function switchResultTab(event, tab, result, contentEl, original = '') {
+    const tabs = document.querySelectorAll('.result-tab');
+    tabs.forEach(t => t.style.borderBottom = 'none');
+    event.target.style.borderBottom = '2px solid #3b82f6';
+
+    if (tab === 'preview' && original) {
+        contentEl.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 6px; opacity: 0.7;">ORIGINAL</div>
+                    <div style="background: #0f172a; padding: 12px; border-radius: 6px; border-left: 3px solid #ef4444;">${escHtml(original)}</div>
+                </div>
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 6px; opacity: 0.7;">RESULT</div>
+                    <div style="background: #0f172a; padding: 12px; border-radius: 6px; border-left: 3px solid #10b981;">${escHtml(result)}</div>
+                </div>
+            </div>
+            <div style="color: #94a3b8; font-size: 0.75rem; opacity: 0.7; margin-top: 12px;">Click "Apply" to replace in the document.</div>
+        `;
+    } else {
+        contentEl.innerHTML = `<div>${escHtml(result)}</div>`;
+    }
+}
+
+function applyResultToSection(result) {
+    const { sectionId, originalText } = state.lastAISelection;
+
+    if (!sectionId) {
+        showNotification('⚠ Section not found', 'error');
+        return;
+    }
+
+    const editor = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+    if (!editor) {
+        showNotification('⚠ Section editor not found', 'error');
+        return;
+    }
+
+    let content = editor.textContent;
+    if (originalText && content.includes(originalText)) {
+        content = content.replace(originalText, result);
+    } else {
+        content = result;
+    }
+
+    editor.textContent = content;
+
+    const section = state.sections.find(s => s.id === sectionId);
+    if (section) {
+        section.content = editor.innerHTML;
+        triggerSave();
+    }
+
+    showNotification('✓ Applied to section', 'success');
+    updateDocStats();
 }
 
 // ── View ──────────────────────────────────────────────────────────────────────
